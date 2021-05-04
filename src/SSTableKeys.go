@@ -22,12 +22,14 @@ var re = regexp.MustCompile(`^\d{16}$`)
 
 var mutexProto = &sync.Mutex{}
 var mutexPort = &sync.Mutex{}
+var mutexHash = &sync.Mutex{}
 var mutexIP4 = &sync.Mutex{}
 var mutexIP6 = &sync.Mutex{}
 var mutexSize = &sync.Mutex{}
 
 var protocolSetCount = make(map[int]int)
 var portSetCount = make(map[int]int)
+var hashSetCount = make(map[int]int)
 var ipv4SetCount = make(map[string]int)
 var ipv6SetCount = make(map[string]int)
 var totalSize = int64(0)
@@ -107,6 +109,11 @@ func readIndexFile(filename string, folderPath string, dataFolderPath string) {
 			mutexIP6.Lock()
 			ipv6SetCount[ipv6.String()] += len(iter.Value()) / 4
 			mutexIP6.Unlock()
+		} else if ttype == 7 {
+			hash := int(binary.BigEndian.Uint32([]byte{foundKey[1], foundKey[2], foundKey[3], foundKey[4]}))
+			mutexHash.Lock()
+			hashSetCount[hash] += len(iter.Value()) / 4
+			mutexHash.Unlock()
 		}
 	}
 	iter.Close()
@@ -168,13 +175,15 @@ func main() {
 
 	protocolsOut, _ := json.Marshal(protocolSetCount)
 	portsOut, _ := json.Marshal(portSetCount)
+	hashesOut, _ := json.Marshal(hashSetCount)
 	ipv4Out, _ := json.Marshal(ipv4SetCount)
 	ipv6Out, _ := json.Marshal(ipv6SetCount)
 
-	out := fmt.Sprintf(`{"totalSize": %d, "protocols":%s,"ports":%s,"ipv4":%s,"ipv6":%s}`,
+	out := fmt.Sprintf(`{"totalSize": %d, "protocols":%s,"ports":%s,"hashes":%s,"ipv4":%s,"ipv6":%s}`,
 		totalSize,
 		string(protocolsOut),
 		string(portsOut),
+		string(hashesOut),
 		string(ipv4Out),
 		string(ipv6Out))
 
